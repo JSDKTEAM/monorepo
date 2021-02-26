@@ -2,17 +2,12 @@
 
 # folders=$(git --no-pager diff --name-only HEAD~1 | sort -u | awk 'BEGIN {FS="/"} {print $1}' | uniq); 
 # echo $folders
+lastcommit=`git log --format="%H" -n 1`
+parentId=`git log --pretty=%P -n 1 "$lastcommit" | awk -F' ' '{print $1}'`
+beforecommitId=`git log --pretty=%P -n 1 "$parentId" | awk -F' ' '{print $1}'`
+echo lastcommit $lastcommit
+echo beforecommitId $beforecommitId
+echo parentId $parentId
 
-changed_folders=`git diff --name-only HEAD~1 | grep / | awk 'BEGIN {FS="/"} {print $1}' | uniq`
-for folder in $changed_folders
- do
-   if [ "$folder" == '_global' ]; then
-     echo "common folder changed, building and publishing all microservices"
-     changed_services=`find . -maxdepth 1 -type d -not -name '_global' -not -name 'shippable' -not -name '.git' -not -path '.' | sed 's|./||'`
-     echo "list of microservice "$changed_services
-     break
-   else
-     echo "Adding $folder to list of services to build"
-   fi
- done
+changed_folders=`git diff --name-only $beforecommitId...$lastcommit | grep / | awk 'BEGIN {FS="/"} {print $1}' | uniq`
 echo "changed folders "$changed_folders
