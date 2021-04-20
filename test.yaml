@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Pipeline for stc-gateway-allonline
+Parameters:
+  TagOwner:
+    Default: gosoft
+    Type: String
+  TagSystem:
+    Default: allonline
+    Type: String
+  TagCreateBy:
+    Type: String
+  TagService:
+    Default: stc
+    Type: String  
+  PrefixProject:
+    Default: stc-gateway-allonline
+    Type: String
+  Env:
+    Default: dev
+    Type: String
+  ProjectName:
+      Description: Name of the Project
+      Type: String
+      Default: stc-gateway-allonline
+  S3Bucket:
+    Description: S3 Bucket, which will hold the artifacts
+    Type: String
+    Default: stc-gateway-allonline-pipeline
+  CMKARN:
+    Description: ARN of the KMS CMK creates in Tools account
+    Type: String
+    Default: arn:aws:kms:ap-southeast-1:065147804054:key/b99165a7-f57b-4077-9544-13bcb4994bf0
+  DevAccount:
+    Description: awscpadev AccountID
+    Type: Number
+  QCAccount:
+    Description: awscpadev AccountID
+    Type: Number
+  ProductionAccount:
+    Description: Production AccountID
+    Type: Number
+  CrossAccountCondition:
+    Description: Conditionally creates the resources for cross account access
+    Type: String
+    Default: false
+  FunctionName:
+    Type: String
+
+Conditions:
+  AddCodeBuildResource: !Equals [ !Ref CrossAccountCondition, true ]
+
+Resources:
+  MyRepo:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Sub ${PrefixProject}-counterservice-respository
+      Tags: 
+        - Key: "Owner" 
+          Value: !Ref TagOwner
+        - Key: "System"
+          Value: !Ref TagSystem
+        - Key: "Service"
+          Value: !Ref TagService
+        - Key: "Createby"
+          Value: !Ref TagCreateBy
+        - Key: "Name"
+          Value: !Ref PrefixProject
+
+  MyEcr:
+    Type: AWS::ECR::Repository
+    Properties: 
+        RepositoryName: !Sub ${PrefixProject}-${FunctionName}-dev-ecr
+      ImageScanningConfiguration:
+        ScanOnPush: "true"
+      Tags: 
+        - Key: "Owner" 
+          Value: !Ref TagOwner
+        - Key: "System"
+          Value: !Ref TagSystem
+        - Key: "Service"
+          Value: !Ref TagService
+        - Key: "Createby"
+          Value: !Ref TagCreateBy
+        - Key: "Name"
+          Value: !Ref PrefixProject
+
+  MyTaskEcs:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      ContainerDefinitions: 
+        - 
+          Name: !Sub ${PrefixProject}-${FunctionName}-dev-taskdefinition
+          Image: ""
+          LogConfiguration:
+            LogDriver: awslogs
+          PortMappings: 
+            - 
+              ContainerPort: 3000
+              HostPort: 0
+      Cpu: 256
+      ExecutionRoleArn: String
+      Family: String
+      Memory: 256
+      NetworkMode: bridge 
+      Tags: 
+        - Key: "Owner" 
+          Value: !Ref TagOwner
+        - Key: "System"
+          Value: !Ref TagSystem
+        - Key: "Service"
+          Value: !Ref TagService
+        - Key: "Createby"
+          Value: !Ref TagCreateBy
+        - Key: "Name"
+          Value: !Ref PrefixProject
+      TaskRoleArn: String
+  
+  MyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true
+      HealthCheckPath: !Sub proxy/${FunctionName}/check
+      Name: !Sub ${PrefixProject}-cs-dev
+      Port: Integer
+      Protocol: HTTP 
+      ProtocolVersion: HTTP1
+      Tags: 
+        - Key: "Owner" 
+          Value: !Ref TagOwner
+        - Key: "System"
+          Value: !Ref TagSystem
+        - Key: "Service"
+          Value: !Ref TagService
+        - Key: "Createby"
+          Value: !Ref TagCreateBy
+        - Key: "Name"
+          Value: !Ref PrefixProject
+      VpcId: String
+
+  MyEcsService:
+    Type: AWS::ECS::Service
+    Properties: 
+      Cluster: String
+      LaunchType: "EC2"
+      LoadBalancers: 
+        - 
+          ContainerName: String
+          ContainerPort: Integer
+          LoadBalancerName: String
+          TargetGroupArn: String
+      NetworkConfiguration: 
+        NetworkConfiguration
+      ServiceName: !Sub ${PrefixProject}-${FunctionName}-service
+      Tags: 
+        - Key: "Owner" 
+          Value: !Ref TagOwner
+        - Key: "System"
+          Value: !Ref TagSystem
+        - Key: "Service"
+          Value: !Ref TagService
+        - Key: "Createby"
+          Value: !Ref TagCreateBy
+        - Key: "Name"
+          Value: !Ref PrefixProject
+      TaskDefinition: String
+        Priority: Integer
+  # MyAlbListenerRule:
+  #   Type: AWS::ElasticLoadBalancingV2::ListenerRule
+  #   Properties: 
+  #     Actions: 
+  #       - Action
+  #     Conditions: 
+  #       - RuleCondition
+  #     ListenerArn: String
+  #     Priority: Integer
+  
+  # MyAlbListenerAction:
+  #   Type: AWS::ElasticLoadBalancingV2::Listener
+  #   Properties:
+  #     DefaultActions:
+  #       - Type: "forward"
+  #       - TargetGroupArn: !Ref myTargetGroup
+  #     LoadBalancerArn: !Ref myLoadBalancer
+  #     Port: 80
+  #     Protocol: "HTTP"
